@@ -1,29 +1,28 @@
 # nichenet-learning-reproduction
 
-This repository contains my learning-oriented reproduction of a NicheNet analysis workflow using **R**, **Seurat**, and **NicheNet**.
+This repository is a learning-based reproduction of a NicheNet workflow using **R**, **Seurat**, and **nichenetr**.
 
-The goal of this repository is **not** to build a production-ready pipeline, but to:
-- understand the main logic of the NicheNet workflow
-- practice reading and organizing bioinformatics analysis code
-- reproduce a representative ligand–receptor / ligand–target analysis example
-- improve my ability to structure analysis scripts in a cleaner GitHub repository
+The main purpose of this project is to:
+- follow the logic of a typical NicheNet analysis
+- practice reading and reorganizing bioinformatics code
+- split a long exploratory script into clearer analysis steps
+- make the workflow easier to read and rerun
+
+This is still a **learning / practice repository**, not a production-level pipeline.
 
 ---
 
-## Project overview
+## What is included
 
-In this project, I reorganized a longer exploratory script into several smaller scripts with clearer responsibilities:
+The current workflow includes these parts:
 
-- package installation and loading
-- data downloading and preprocessing
-- main NicheNet analysis
-- result visualization
-
-This repository is intended as a **learning and practice project**, showing my current progress in:
-- understanding Seurat object handling
-- running a basic NicheNet workflow
-- checking intermediate results
-- separating installation, preparation, analysis, and plotting steps
+1. package installation and loading  
+2. data download and preprocessing  
+3. receiver / sender definition  
+4. differential expression analysis in receiver cells  
+5. ligand activity ranking  
+6. ligand-target and ligand-receptor prediction  
+7. heatmap-based visualization of selected results  
 
 ---
 
