@@ -1,24 +1,18 @@
 # =========================================================
-# 文件名: 01_prepare_data.R
-# 作用:
-#   这个脚本负责准备分析所需的数据输入。
+# 这个文件只负责“数据准备”
 #
-# 本脚本做的事情:
-#   1. 创建项目目录
-#   2. 下载官方示例 Seurat 对象
-#   3. 下载 NicheNet 网络文件
-#   4. 读取并预处理 Seurat 对象
-#   5. 检查对象和网络文件是否正常
-#   6. 把处理好的对象保存到 data/processed/
+# 先做这些事：
+# 1. 建目录
+# 2. 下载示例数据
+# 3. 读取 Seurat 对象
+# 4. 读取 NicheNet 网络文件
+# 5. 做基础检查
+# 6. 把处理好的对象存下来
 #
-# 为什么要单独拆出来:
-#   因为“数据准备”和“正式分析”是两件事。
-#   单独拆开后，主分析脚本会更干净，也更容易重跑。
+# 这一部分先跑通，后面主分析才有东西可用
+# 如果这里出问题，先查下载、读入和对象格式，不要急着改分析参数
 # =========================================================
 
-# -----------------------------
-# 第 0 步：加载包
-# -----------------------------
 library(nichenetr)
 library(Seurat)
 library(SeuratObject)
@@ -26,16 +20,17 @@ library(tidyverse)
 library(tibble)
 
 # -----------------------------
-# 第 1 步：创建项目目录
+# 先把项目目录建出来
 # -----------------------------
-# dir.create() 的作用：
-# 创建文件夹
+# dir.create()：
+# dir = directory（目录/文件夹）
+# create = 创建
 #
-# recursive = TRUE 表示：
-# 如果上层目录还不存在，也一起创建
+# recursive = TRUE：
+# 上层目录不存在时，一起建出来
 #
-# showWarnings = FALSE 表示：
-# 如果目录已经存在，不要重复弹警告
+# showWarnings = FALSE：
+# 如果目录已经存在，就别重复弹警告
 dir.create("data/raw", recursive = TRUE, showWarnings = FALSE)
 dir.create("data/processed", recursive = TRUE, showWarnings = FALSE)
 dir.create("results/tables", recursive = TRUE, showWarnings = FALSE)
@@ -43,19 +38,20 @@ dir.create("results/plots", recursive = TRUE, showWarnings = FALSE)
 dir.create("results/rds", recursive = TRUE, showWarnings = FALSE)
 
 # -----------------------------
-# 第 2 步：设置下载超时时间
+# 把下载超时时间设长一点
 # -----------------------------
-# options(timeout = 600) 的意思是：
-# 把下载等待时间设成 600 秒（10 分钟）
-# 避免 Zenodo 速度慢时中途断掉
+# options()：
+# 用来设置 R 的全局选项
+#
+# timeout = 超时时间
+# 下载站点慢的时候，这一步能减少中途断掉的情况
 options(timeout = 600)
 
 # -----------------------------
-# 第 3 步：定义要下载的文件路径
+# 先把下载地址和本地文件名写清楚
 # -----------------------------
-# 这样做的好处是：
-# 1. 以后如果要改文件名或链接，只改这里
-# 2. 后面写代码时更简洁
+# 这样后面读代码时更容易看出：
+# 文件从哪里来，最后存到哪里
 seurat_url <- "https://zenodo.org/record/3531889/files/seuratObj.rds"
 seurat_file <- "data/raw/seuratObj.rds"
 
@@ -69,14 +65,18 @@ wn_url <- "https://zenodo.org/record/7074291/files/weighted_networks_nsga2r_fina
 wn_file <- "data/raw/weighted_networks_mouse.rds"
 
 # -----------------------------
-# 第 4 步：下载 Seurat 对象
+# 没有下载过的文件，再下载
 # -----------------------------
-# file.exists() 的作用：
-# 检查某个文件是否已经存在
+# file.exists()：
+# exists = 存在
+# 一看到这个函数，就先理解成“文件在不在”
 #
-# 这里的逻辑是：
-# 如果文件还没有下载，就下载；
-# 如果已经有了，就直接跳过，避免重复下载。
+# download.file()：
+# download = 下载
+# file = 文件
+#
+# mode = "wb"：
+# 二进制文件用 wb 更稳，.rds 这里就按这个写
 if (!file.exists(seurat_file)) {
   download.file(
     url = seurat_url,
@@ -85,13 +85,6 @@ if (!file.exists(seurat_file)) {
   )
 }
 
-# -----------------------------
-# 第 5 步：下载 NicheNet 网络文件
-# -----------------------------
-# 这三个文件分别代表：
-# 1. ligand-receptor 配对网络
-# 2. ligand-target 先验矩阵
-# 3. 带权重的网络信息
 if (!file.exists(lr_file)) {
   download.file(
     url = lr_url,
@@ -117,67 +110,98 @@ if (!file.exists(wn_file)) {
 }
 
 # -----------------------------
-# 第 6 步：检查原始文件是否下载成功
+# 简单确认一下文件有没有真的下到本地
 # -----------------------------
+# cat()：
+# 常用来把文字直接打印到控制台
+# 先记成“直接输出一行提示”
 cat("Seurat object exists: ", file.exists(seurat_file), "\n", sep = "")
 cat("LR network exists: ", file.exists(lr_file), "\n", sep = "")
 cat("Ligand-target matrix exists: ", file.exists(ltm_file), "\n", sep = "")
 cat("Weighted networks exists: ", file.exists(wn_file), "\n", sep = "")
 
 # -----------------------------
-# 第 7 步：读取 Seurat 对象
+# 读取 Seurat 对象
 # -----------------------------
-# readRDS() 用来读取 .rds 文件
+# readRDS()：
+# read = 读取
+# RDS = R 的单对象保存格式
+#
+# 看到 readRDS，直接记成：
+# “把 .rds 文件里的 R 对象读回来”
 seuratObj <- readRDS(seurat_file)
 
 # -----------------------------
-# 第 8 步：更新旧版 Seurat 对象结构
+# 更新旧版 Seurat 对象格式
 # -----------------------------
-# 有些官方示例对象可能来自较老版本 Seurat
-# UpdateSeuratObject() 会把它升级成当前版本可用的结构
+# UpdateSeuratObject()：
+# 名字很直白，看到就知道是“更新 Seurat 对象”
+#
+# 官方示例对象有时来自旧版本 Seurat
+# 这里先转成当前版本更容易继续往下用的结构
 seuratObj <- UpdateSeuratObject(seuratObj)
 
 # -----------------------------
-# 第 9 步：把基因别名转成标准 symbol
+# 把基因别名换成标准 gene symbol
 # -----------------------------
-# alias_to_symbol_seurat() 是 nichenetr 提供的函数
-# 这样做能减少后面和 NicheNet 网络匹配不上基因名的问题
+# alias = 别名
+# symbol = 标准名
 #
-# "mouse" 表示当前数据是小鼠数据
+# 这一步主要是为了后面和 NicheNet 网络对基因名时更稳
+# 不然同一个基因可能因为命名不统一匹配不上
+#
+# "mouse" 表示这里按小鼠数据处理
 seuratObj <- alias_to_symbol_seurat(seuratObj, "mouse")
 
 # -----------------------------
-# 第 10 步：设置当前 identity
+# 把当前 identity 设成 celltype
 # -----------------------------
-# Idents() 是 Seurat 里很重要的概念
-# 这里把当前细胞分组方式设为 celltype
+# Idents()：
+# Seurat 里很常见
+# 先简单记成“当前按什么标签给细胞分组”
+#
+# 这里设成 celltype，后面按细胞类型取子集会更直接
 Idents(seuratObj) <- seuratObj$celltype
 
 # -----------------------------
-# 第 11 步：读取 NicheNet 网络对象
+# 读取 NicheNet 网络对象
 # -----------------------------
 lr_network <- readRDS(lr_file)
 ligand_target_matrix <- readRDS(ltm_file)
 weighted_networks <- readRDS(wn_file)
 
+# -----------------------------
 # 去掉重复的 ligand-receptor 配对
-# distinct(from, to) 表示：
+# -----------------------------
+# distinct()：
+# 来自 dplyr
+# 先记成“去重”
+#
+# 这里按 from 和 to 两列一起去重
 # 只保留唯一的 ligand-receptor 组合
 lr_network <- lr_network %>% distinct(from, to)
 
 # -----------------------------
-# 第 12 步：做基础数据检查
+# 做几个最基础的检查
 # -----------------------------
-# 这些检查很适合学习性项目：
-# 既能帮助你确认对象没读错，也能体现你有“先检查再分析”的习惯
+# 先检查对象本身、meta.data、细胞类型分布、条件分布
+# 再检查网络对象的基本结构
+# 这一部分虽然简单，但很有用：
+# 先确认输入没问题，再往后做分析
 cat("\n========== Basic checks ==========\n")
+
 cat("Seurat object summary:\n")
 print(seuratObj)
 
 cat("\nMeta data head:\n")
+# head()：
+# head = 头部
+# 看前几行，快速确认结构
 print(head(seuratObj@meta.data))
 
 cat("\nCelltype distribution:\n")
+# table()：
+# 把每个类别出现多少次统计出来
 print(table(seuratObj$celltype))
 
 cat("\nCondition distribution (aggregate):\n")
@@ -187,23 +211,30 @@ cat("\nLR network head:\n")
 print(head(lr_network))
 
 cat("\nLigand-target matrix dimension:\n")
+# dim()：
+# dimension = 维度
+# 经常用来看矩阵或数据框的行列数
 print(dim(ligand_target_matrix))
 
 cat("\nWeighted networks names:\n")
+# names()：
+# 看列表或对象里有哪些元素名
 print(names(weighted_networks))
+
 cat("=================================\n")
 
 # -----------------------------
-# 第 13 步：保存处理好的对象
+# 把处理好的对象存下来
 # -----------------------------
-# saveRDS() 的作用：
-# 把对象保存成 .rds 文件，方便后续脚本直接读取
+# saveRDS() 和 readRDS() 是一对
+# save = 保存
+#
+# 这样做的好处：
+# 后面的主分析脚本可以直接读取处理好的对象
+# 不用每次都从头下载、更新、转换
 saveRDS(seuratObj, "data/processed/seuratObj_prepared.rds")
 saveRDS(lr_network, "data/processed/lr_network_prepared.rds")
 saveRDS(ligand_target_matrix, "data/processed/ligand_target_matrix_prepared.rds")
 saveRDS(weighted_networks, "data/processed/weighted_networks_prepared.rds")
 
-# -----------------------------
-# 第 14 步：打印完成提示
-# -----------------------------
-cat("01_prepare_data.R 运行完成：数据和网络文件已准备好。\n")
+cat("01_prepare_data.R 跑完：数据和网络文件已经准备好。\n")
